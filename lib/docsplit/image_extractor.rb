@@ -46,7 +46,7 @@ module Docsplit
           cmd = "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert +adjoin -define pdf:use-cropbox=true #{common} #{escaped_pdf}[#{page - 1}] #{out_file} 2>&1".chomp
           temp_directory = `#{cmd}`.chomp
           result_hash = { :image => out_file , :temp_file => temp_directory }
-          result[page] << result_hash
+          result.push(result_hash)
           raise ExtractionFailed, result if $? != 0
         end
       end
