@@ -12,6 +12,7 @@ module Docsplit
     # configuration in options.
     def extract(pdfs, options)
       @pdfs = [pdfs].flatten
+      @result = []
       extract_options(options)
       @pdfs.each do |pdf|
         previous = nil
@@ -20,6 +21,7 @@ module Docsplit
           previous = size if @rolling
         end
       end
+      return @result
     end
 
     # Convert a single PDF into page images at the specified size and format.
@@ -35,7 +37,6 @@ module Docsplit
       escaped_pdf = ESCAPE[pdf]
       FileUtils.mkdir_p(directory) unless File.exists?(directory)
       common    = "#{MEMORY_ARGS} -density #{@density} #{resize_arg(size)} #{quality_arg(format)}"
-      result = []
       if previous
         FileUtils.cp(Dir[directory_for(previous) + '/*'], directory)
         result = `MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm mogrify #{common} -unsharp 0x0.5+0.75 \"#{directory}/*.#{format}\" 2>&1`.chomp
@@ -45,8 +46,8 @@ module Docsplit
           out_file  = ESCAPE[File.join(directory, "#{basename}_#{page}.#{format}")]
           cmd = "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert +adjoin -define pdf:use-cropbox=true #{common} #{escaped_pdf}[#{page - 1}] #{out_file} 2>&1".chomp
           temp_directory = `#{cmd}`.chomp
-          result_hash = { :image => out_file , :temp_file => temp_directory }
-          result.push(result_hash)
+          result_hash = { :image => out_file , :page => page }
+          @result.push(result_hash)
           raise ExtractionFailed, result if $? != 0
         end
       end
