@@ -27,6 +27,7 @@ module Docsplit
 
     # Extract text from a list of PDFs.
     def extract(pdfs, opts)
+      @result = []
       extract_options opts
       FileUtils.mkdir_p @output unless File.exists?(@output)
       [pdfs].flatten.each do |pdf|
@@ -41,6 +42,7 @@ module Docsplit
           end
         end
       end
+      return @result
     end
 
     # Does a PDF have any text embedded?
@@ -68,8 +70,9 @@ module Docsplit
           file = "#{base_path}_#{page}"
           run "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert -despeckle +adjoin #{MEMORY_ARGS} #{OCR_FLAGS} #{escaped_pdf}[#{page - 1}] #{escaped_tiff} 2>&1"
           run "tesseract #{escaped_tiff} #{ESCAPE[file]} -l #{@language} #{psm} 2>&1"
-          clean_text(file + '.txt') if @clean_ocr
+          clean_file = clean_text(file + '.txt') if @clean_ocr
           FileUtils.remove_entry_secure tiff
+          @result.push(file + '.txt')
         end
       else
         tiff = "#{tempdir}/#{@pdf_name}.tif"
@@ -77,7 +80,8 @@ module Docsplit
         run "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert -despeckle #{MEMORY_ARGS} #{OCR_FLAGS} #{escaped_pdf} #{escaped_tiff} 2>&1"
         #if the user says don't do orientation detection or the plugin is not installed, set psm to 0
         run "tesseract #{escaped_tiff} #{base_path} -l #{@language} #{psm} 2>&1"
-        clean_text(base_path + '.txt') if @clean_ocr
+        clean_file = clean_text(base_path + '.txt') if @clean_ocr
+        @result.push(base_path + '.txt')
       end
     ensure
       FileUtils.remove_entry_secure tempdir if File.exists?(tempdir)
